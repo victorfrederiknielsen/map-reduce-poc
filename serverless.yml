@@ -42,11 +42,11 @@ functions:
           method: post
           cors: true
 
-  aggregateHourly:
-    handler: ./src/jobs.aggregateHourly
+  buildReportingUnits:
+    handler: ./src/jobs.buildReportingUnits
     events:
       - http:
-          path: aggregateHourly
+          path: buildReportingUnits
           method: post
           cors: true
 

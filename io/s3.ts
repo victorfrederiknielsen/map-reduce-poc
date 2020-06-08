@@ -3,6 +3,8 @@ import { S3 } from "aws-sdk";
 import { ListObjectsV2Output } from "aws-sdk/clients/s3";
 import { Granularity } from "../model/date";
 import { isBetweenDateStrings } from "../common/number";
+import { Dimension, ReducedDimension, Aggregate } from "../model/aggregate";
+import { GUID } from "../model/guid";
 
 export const config: S3.ClientConfiguration = process.env.IS_OFFLINE
   ? {
@@ -77,8 +79,31 @@ export default {
     return newData;
   },
 
+  async writeBatch(
+    map: Map<string, Map<string, Aggregate>>,
+    path: string,
+    bucket: string
+  ) {
+    return Promise.all(
+      Array.from(map).map((mapArray) => {
+        const dimensionKey = mapArray[0];
+        const valueMap = mapArray[1];
+
+        return Array.from(valueMap).map((valueArray) => {
+          const dimensionValue = valueArray[0];
+          const aggregate = valueArray[1];
+          const fullFileName = `${path}${dimensionKey}/${dimensionValue}/aggregate.json`;
+
+          return this.write(aggregate, fullFileName, bucket);
+        });
+      })
+    );
+  },
+
   getKeysFromList(list: ListObjectsV2Output) {
-    return list.Contents.map((object) => object.Key);
+    return list.Contents.map((object) => {
+      if (object.Key) return object.Key;
+    });
   },
 
   getKeysFromListForGranularity(

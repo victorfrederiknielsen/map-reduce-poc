@@ -4,7 +4,7 @@ import s3 from "../io/s3";
 import response from "../io/response";
 
 // 1. validate event context - TODO
-// 2. return aggregated report from READ bucket - TODO
+// 2. return aggregated report from READ bucket
 export const getReport: APIGatewayProxyHandler = async (event, _context) => {
   const fromDate = event.queryStringParameters["fromDate"];
   const toDate = event.queryStringParameters["toDate"];
