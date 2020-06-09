@@ -60,33 +60,15 @@ export const aggregateMonthly: APIGatewayProxyHandler = async (
   _event,
   _context
 ) => {
-  const path = date.generateDatePath(Granularity.Monthly);
-
   try {
-    const filesInDirectory = await s3.listFiles(
-      path,
-      process.env.REPORT_READ_BUCKET
-    );
-    const keys = s3.getKeysFromListForGranularity(
-      filesInDirectory,
-      Granularity.Monthly
-    );
-    const events = await s3.getList(keys, process.env.REPORT_READ_BUCKET);
-
-    // Transform into aggregate
-    const aggregatedResult = aggregate.aggregate(events);
-
-    // Upload aggregate to READ bucket
-    const fileName = `${path}aggregate.json`;
-    const uploadResult = await s3.write(
-      aggregatedResult,
-      fileName,
+    const result = await _buildAggregations(
+      Granularity.Monthly,
+      process.env.REPORT_READ_BUCKET,
       process.env.REPORT_READ_BUCKET
     );
 
     return response._200({
-      aggregate: aggregatedResult,
-      uploadResult: uploadResult,
+      uploadResult: result,
     });
   } catch (error) {
     return response._500(error);
@@ -126,7 +108,7 @@ export const _buildAggregations = async (
 
   try {
     const filesInDirectory = await s3.listFiles(path, readBucket);
-    const keys = s3.getKeysFromList(filesInDirectory);
+    const keys = s3.getKeysFromList(filesInDirectory, path);
     const aggregates = await s3.getList(keys, readBucket);
 
     const mappedDimensions = map.mapDimensionsFromAggregates(
@@ -157,7 +139,9 @@ export const _buildReportingUnits = async (
     const events = await s3.getList(keys, readBucket);
 
     const mappedDimensions = map.mapDimensionsFromEvents(dimensions, events);
-    const reducedDimension = aggregate.reduceDimensions(mappedDimensions);
+    const reducedDimension = aggregate.reduceDimensionsFromEvents(
+      mappedDimensions
+    );
 
     return await s3.writeBatch(reducedDimension, path, writeBucket);
   } catch (error) {

@@ -27,9 +27,7 @@ export default {
     );
   },
 
-  reduceDimensions(
-    dimensionMap: Map<string, Map<string, number[]>>
-  ): Map<string, Map<string, Aggregate>> {
+  reduceDimensionsFromEvents(dimensionMap: Map<string, Map<string, number[]>>) {
     const mappedDimensions: Map<string, Map<string, Aggregate>> = new Map();
 
     Array.from(dimensionMap).forEach((dimensionMapArray) => {
@@ -57,7 +55,7 @@ export default {
 
   reduceDimensionsFromAggregates(
     dimensionMap: Map<string, Map<string, Aggregate>>
-  ): Map<string, Map<string, Aggregate>> {
+  ) {
     const mappedDimensions: Map<string, Map<string, Aggregate>> = new Map();
 
     Array.from(dimensionMap).forEach((dimensionMapArray) => {

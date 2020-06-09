@@ -3,8 +3,7 @@ import { S3 } from "aws-sdk";
 import { ListObjectsV2Output } from "aws-sdk/clients/s3";
 import { Granularity } from "../model/date";
 import { isBetweenDateStrings } from "../common/number";
-import { Dimension, ReducedDimension, Aggregate } from "../model/aggregate";
-import { GUID } from "../model/guid";
+import { Aggregate } from "../model/aggregate";
 
 export const config: S3.ClientConfiguration = process.env.IS_OFFLINE
   ? {
@@ -100,9 +99,21 @@ export default {
     );
   },
 
-  getKeysFromList(list: ListObjectsV2Output) {
-    return list.Contents.map((object) => {
-      if (object.Key) return object.Key;
+  getKeysFromList(list: ListObjectsV2Output, path?: string, depth: number = 1) {
+    return list.Contents.filter((object) => {
+      // very ineffecient, use delimiter when getting list, but it isnt playing nice.
+      // Just get the path and the files within a single depth.
+      // /5/tentant/lobsterink/...  -- good!
+      // /5/6/tenant/lobsterink/... -- no good!
+      const key = object.Key.replace(path, "");
+      const keyArray = key.split("/");
+      const parsedDirectory = Number.parseInt(keyArray[depth]);
+
+      return Number.isNaN(parsedDirectory);
+    }).map((object) => {
+      if (object.Key) {
+        return object.Key;
+      }
     });
   },
 
