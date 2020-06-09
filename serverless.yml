@@ -86,6 +86,7 @@ functions:
               querystring:
                 fromDate: true
                 toDate: true
+                tenant: true
 
 resources:
   Resources:

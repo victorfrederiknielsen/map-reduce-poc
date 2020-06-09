@@ -108,7 +108,7 @@ export const _buildAggregations = async (
 
   try {
     const filesInDirectory = await s3.listFiles(path, readBucket);
-    const keys = s3.getKeysFromList(filesInDirectory, path);
+    const keys = s3.getKeysFromList(filesInDirectory, path, granularity);
     const aggregates = await s3.getList(keys, readBucket);
 
     const mappedDimensions = map.mapDimensionsFromAggregates(
@@ -135,7 +135,7 @@ export const _buildReportingUnits = async (
 
   try {
     const filesInDirectory = await s3.listFiles(path, readBucket);
-    const keys = s3.getKeysFromList(filesInDirectory);
+    const keys = s3.getKeysFromList(filesInDirectory, path, granularity);
     const events = await s3.getList(keys, readBucket);
 
     const mappedDimensions = map.mapDimensionsFromEvents(dimensions, events);

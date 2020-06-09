@@ -8,6 +8,7 @@ import response from "../io/response";
 export const getReport: APIGatewayProxyHandler = async (event, _context) => {
   const fromDate = event.queryStringParameters["fromDate"];
   const toDate = event.queryStringParameters["toDate"];
+  const tenant = event.queryStringParameters["tenant"];
 
   const granularity = date.identifyGranularity(fromDate, toDate);
   const path = date.generateDatePath(Math.max(0, granularity - 1));
@@ -15,11 +16,20 @@ export const getReport: APIGatewayProxyHandler = async (event, _context) => {
     path,
     process.env.REPORT_READ_BUCKET
   );
-  const filesWithinDates = s3.getKeysWithinDatesForGranularity(
-    filesInDirectory,
+  const keys = filesInDirectory.Contents.map((object) => object.Key);
+  // const keys = s3.getKeysFromList(filesInDirectory, path, granularity);
+  const filesWithinDates = s3.filterKeys(
+    keys,
     fromDate,
     toDate,
-    granularity
+    path,
+    granularity,
+    [
+      {
+        key: "tenant",
+        value: tenant,
+      },
+    ]
   );
 
   try {

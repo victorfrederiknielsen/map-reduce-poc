@@ -17,4 +17,5 @@ export interface ReducedDimension {
 
 export interface Dimension {
   key: string;
+  value?: string;
 }

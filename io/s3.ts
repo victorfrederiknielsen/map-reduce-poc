@@ -3,7 +3,7 @@ import { S3 } from "aws-sdk";
 import { ListObjectsV2Output } from "aws-sdk/clients/s3";
 import { Granularity } from "../model/date";
 import { isBetweenDateStrings } from "../common/number";
-import { Aggregate } from "../model/aggregate";
+import { Aggregate, Dimension } from "../model/aggregate";
 
 export const config: S3.ClientConfiguration = process.env.IS_OFFLINE
   ? {
@@ -99,7 +99,7 @@ export default {
     );
   },
 
-  getKeysFromList(list: ListObjectsV2Output, path?: string, depth: number = 1) {
+  getKeysFromList(list: ListObjectsV2Output, path: string, depth: number = 1) {
     return list.Contents.filter((object) => {
       // very ineffecient, use delimiter when getting list, but it isnt playing nice.
       // Just get the path and the files within a single depth.
@@ -108,12 +108,11 @@ export default {
       const key = object.Key.replace(path, "");
       const keyArray = key.split("/");
       const parsedDirectory = Number.parseInt(keyArray[depth]);
+      const checkIfDimension = Number.parseInt(keyArray[depth - 1]);
 
-      return Number.isNaN(parsedDirectory);
+      return Number.isNaN(parsedDirectory) && !Number.isNaN(checkIfDimension);
     }).map((object) => {
-      if (object.Key) {
-        return object.Key;
-      }
+      if (object.Key) return object.Key;
     });
   },
 
@@ -147,71 +146,67 @@ export default {
     return keys;
   },
 
-  getKeysWithinDatesForGranularity(
-    list: ListObjectsV2Output,
+  filterKeys(
+    keys: string[],
     fromDate: string,
     toDate: string,
-    granularity: Granularity
+    path: string,
+    granularity: Granularity,
+    dimensions: Dimension[] = [{ key: "tenant" }],
+    depth: number = 0
   ) {
-    const keys = [];
+    return keys
+      .filter((key) => {
+        // Very ineffecient, use delimiter when getting list, but it isnt playing nice.
+        // Just get the path and the files within a single depth.
+        // /5/tentant/lobsterink/...  -- good!
+        // /5/6/tenant/lobsterink/... -- no good!
+        depth = granularity === Granularity.Yearly ? 0 : 1;
+        const keyWithoutPath = key.replace(path, "");
+        const keyArray = keyWithoutPath.split("/");
+        const parsedDirectory = Number.parseInt(keyArray[depth]);
 
-    list.Contents.forEach((object) => {
-      const directoryArray = object.Key.split("/");
+        return Number.isNaN(parsedDirectory);
+      })
+      .filter((key) => {
+        // Return only selected dimensions
+        return dimensions.some(
+          (dimension) =>
+            key.includes(dimension.key) && key.includes(dimension.value)
+        );
+      })
+      .filter((key) => {
+        // Return only keys within the correct date range.
+        const directoryArray = key.split("/");
 
-      switch (granularity) {
-        case Granularity.Yearly:
-          if (
-            isBetweenDateStrings(
+        switch (granularity) {
+          case Granularity.Yearly:
+            return isBetweenDateStrings(
               fromDate.substring(0, 4),
               toDate.substring(0, 4),
               directoryArray[0]
-            ) &&
-            directoryArray.length === 2
-          ) {
-            keys.push(object.Key);
-          }
-          break;
-        case Granularity.Monthly:
-          if (
-            isBetweenDateStrings(
+            );
+          case Granularity.Monthly:
+            return isBetweenDateStrings(
               fromDate.substring(4, 6),
               toDate.substring(4, 6),
               directoryArray[1]
-            ) &&
-            directoryArray.length === 3
-          ) {
-            keys.push(object.Key);
-          }
-          break;
-        case Granularity.Daily:
-          if (
-            isBetweenDateStrings(
+            );
+          case Granularity.Daily:
+            return isBetweenDateStrings(
               fromDate.substring(6, 8),
               toDate.substring(6, 8),
               directoryArray[2]
-            ) &&
-            directoryArray.length === 4
-          ) {
-            keys.push(object.Key);
-          }
-          break;
-        case Granularity.Hourly:
-          if (
-            isBetweenDateStrings(
+            );
+          case Granularity.Hourly:
+            return isBetweenDateStrings(
               fromDate.substring(8, 10),
               toDate.substring(8, 10),
               directoryArray[3]
-            ) &&
-            directoryArray.length === 5
-          ) {
-            keys.push(object.Key);
-          }
-          break;
-        default:
-          throw Error("Could not find Granularity");
-      }
-    });
-
-    return keys;
+            );
+          default:
+            throw Error("Could not find Granularity");
+        }
+      });
   },
 };
