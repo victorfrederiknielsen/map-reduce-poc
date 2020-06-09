@@ -99,7 +99,11 @@ export default {
     );
   },
 
-  getKeysFromList(list: ListObjectsV2Output, path: string, depth: number = 1) {
+  getKeysFromListForAggregates(
+    list: ListObjectsV2Output,
+    path: string,
+    depth: number = 1
+  ) {
     return list.Contents.filter((object) => {
       // very ineffecient, use delimiter when getting list, but it isnt playing nice.
       // Just get the path and the files within a single depth.
@@ -111,6 +115,26 @@ export default {
       const checkIfDimension = Number.parseInt(keyArray[depth - 1]);
 
       return Number.isNaN(parsedDirectory) && !Number.isNaN(checkIfDimension);
+    }).map((object) => {
+      if (object.Key) return object.Key;
+    });
+  },
+
+  getKeysFromListForEvents(
+    list: ListObjectsV2Output,
+    path: string,
+    depth: number = 1
+  ) {
+    return list.Contents.filter((object) => {
+      // very ineffecient, use delimiter when getting list, but it isnt playing nice.
+      // Just get the path and the files within a single depth.
+      // /5/tentant/lobsterink/...  -- good!
+      // /5/6/tenant/lobsterink/... -- no good!
+      const key = object.Key.replace(path, "");
+      const keyArray = key.split("/");
+      const parsedDirectory = Number.parseInt(keyArray[depth]);
+
+      return Number.isNaN(parsedDirectory);
     }).map((object) => {
       if (object.Key) return object.Key;
     });
